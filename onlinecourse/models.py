@@ -94,10 +94,42 @@ class Enrollment(models.Model):
     mode = models.CharField(max_length=5, choices=COURSE_MODES, default=AUDIT)
     rating = models.FloatField(default=5.0)
 
+class Question(models.Model):
+    # Many-to-One relationship to Course. If a course is deleted, its questions are deleted.
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    # The text content of the question
+    content = models.CharField(max_length=200)
+    # Grade point weight assigned to the question
+    grade = models.IntegerField(default=50)
 
-# One enrollment could have multiple submission
-# One submission could have multiple choices
-# One choice could belong to multiple submissions
-#class Submission(models.Model):
-#    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
-#    choices = models.ManyToManyField(Choice)
+    def __str__(self):
+        return "Question: " + self.content
+
+    # Core method to evaluate if the student's selections match the correct answers exactly
+    def is_get_score(self, selected_ids):
+        all_answers = self.choice_set.filter(is_correct=True).count()
+        selected_correct = self.choice_set.filter(is_correct=True, id__in=selected_ids).count()
+        if all_answers == selected_correct and len(selected_ids) == all_answers:
+            return True
+        return False
+
+class Choice(models.Model):
+    # Many-to-One relationship to Question
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    # The text content of the choice
+    content = models.CharField(max_length=200)
+    # Boolean flag determining if this specific choice is correct
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return "Choice: " + self.content
+
+
+class Submission(models.Model):
+    # Many-to-One relationship to Enrollment
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+    # Many-to-Many relationship associating selected choices with this submission
+    choices = models.ManyToManyField(Choice)
+
+    def __str__(self):
+        return "Submission for: " + self.enrollment.user.username
